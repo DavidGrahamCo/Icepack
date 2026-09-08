@@ -29,9 +29,7 @@ Snow redistribution
 
 Because the thermodynamic schemes in CICE assume a uniform snow depth over each category, ignoring the fractions of level and deformed ice, effects of snow redistribution are included only via the delta-Eddington radiation scheme. The redistributed snow depth is used to determine the effective area of bare ice (for very small snow depths) and the effective area and depth of melt ponds over level ice. Once those areas are determined, the redistributed snow volume over them is known, from which the snow depth for the remaining snow-covered area can be computed and used for its radiation balance calculation.
 
-Two basic approaches are available for snow redistribution by wind, ``snwredist`` = ``bulk``, for which a user-defined parameter :math:`p` (``snwlvlfac``) determines the ratio of snow on ridges to that on level ice, and ``snwITDrdg``, in which snow can be compacted by the wind or eroded and redeposited on other thickness categories. For both, nonlocal redistribution of snow (i.e., between grid cells) is neglected, assuming that the difference between snow mass blowing into a grid cell and that blowing out is negligible, but snow can be blown into nearby leads and open water.
-
-
+Two basic approaches are available for snow redistribution by wind, ``snwredist`` = ``bulk``, for which a user-defined parameter :math:`p` (``snwlvlfac``) determines the ratio of snow on ridges to that on level ice, and ``snwredist`` = ``ITDrdg``, in which snow can be compacted by the wind or eroded and redeposited on other thickness categories based on the standard deviation of the level and ridged ice thickness distribution. For both, nonlocal redistribution of snow (i.e., between grid cells) is neglected, assuming that the difference between snow mass blowing into a grid cell and that blowing out is negligible, but snow can be blown into nearby leads and open water.
 
 .. _snow_bulk:
 
@@ -64,7 +62,7 @@ In the shortwave module for level-ice ponds, we create a new variable :math:`h_{
 Snow redistribution and compaction by wind
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Following :cite:`Lecomte15`, when ``snwredist`` = ``snwITDrdg`` we parameterize the amount of snow lost into the ocean through leads or redistributed to other thickness categories by defining the redistribution function :math:`\Phi` for snow mass as the sum of an erosion rate :math:`\Phi_E` and a redeposition rate :math:`\Phi_R` for each category of thickness :math:`h_i`:
+Following :cite:`Lecomte15`, when ``snwredist`` = ``ITDrdg`` we parameterize the amount of snow lost into the ocean through leads or redistributed to other thickness categories by defining the redistribution function :math:`\Phi` for snow mass as the sum of an erosion rate :math:`\Phi_E` and a redeposition rate :math:`\Phi_R` for each category of thickness :math:`h_i`:
 
 .. math::
    \Phi_E = \left({\partial m \over \partial t}\right)_{erosion} = -{\gamma \over \sigma_{ITD}} \left(V-V^*\right){\rho_{max} - \rho_s \over \rho_{max}}
@@ -123,7 +121,7 @@ Together with snow volume, they also can be used to determine effective snow den
 
 Sources of :math:`m_{ice}` are snowfall, condensation, and freezing of liquid water within the snowpack; sinks are sublimation and melting. All of the sources and sinks of :math:`m_{ice}` are already computed in the code except for freezing of liquid water within the snow pack.
 
-Sources of :math:`m_{liq}` are rain and snow melt; freezing of liquid water within the snowpack and runoff are sinks. Runoff and meltwater entering a snow layer (i.e., runoff from the layer above) are associated with vertical flow through the snow column. As in :cite:`Oleson10`, when the liquid water within a snow layer exceeds the layer's holding capacity, the excess water is added to the underlying layer, limited by the effective porosity of the layer. When ``use_smliq_pnd`` is true, the excess water is supplied to the melt pond parameterization, which puts a fraction of it into the pond volume and allows the rest to run off into the ocean.
+Sources of :math:`m_{liq}` are rain and snow melt; freezing of liquid water within the snowpack and runoff are sinks. Runoff and meltwater entering a snow layer (i.e., runoff from the layer above) are associated with vertical flow through the snow column. As in :cite:`Oleson10`, when the liquid water within a snow layer exceeds the layer's holding capacity, the excess water is added to the underlying layer, limited by the effective porosity of the layer. The layer's holding capacity, or irreducible saturation level, is a namelist option, ``snwliq_max``, with values ranging from about 0.03 to approximately 0.1 (:cite:`Brun89`). When ``use_smliq_pnd`` is true, the excess water is supplied to the melt pond parameterization, which puts a fraction of it into the pond volume and allows the rest to run off into the ocean.
 
 The snow mass fractions of precipitation and old ice are saved for metamorphosing the snow grain radius.
 
@@ -140,7 +138,7 @@ In the formation of depth hoar, dry snow kinetic metamorphism (TG metamorphism) 
 
 The tracers :math:`m_{liq}` and :math:`m_{ice}` characterize the snow in each snow layer, for each ice category and horizontal grid cell. The model's meltpond volume covers a fraction of the grid cell and represents liquid in excess of :math:`m_{liq}`. The radiative effects of snow grain radius in the fraction of ice covered by pond volume are only calculated when the pond volume has not yet saturated the snow pack; otherwise, delta-Eddington transfer uses meltpond properties. Therefore, modelled changes in snow grain radii from metamorphism are designed specifically for the fraction without exposed (i.e. effective) melt ponds.
 
-Following :cite:`Oleson10`, the new snow grain radius is computed as a weighted function of existing and new (freshly fallen, ``rsnw_fall``) snow grain radii, using parameters from a look-up table that depends on snow temperature, temperature gradient and (effective) density.  The maximum snow radius is a namelist option, ``rsnw_tmax``.
+Following :cite:`Oleson10` and :cite:`Brun89`, the new snow grain radius tracer is a weighted function of existing and new (freshly fallen, ``rsnw_fall``) snow grain radii.  The snow grain radius grows over time via two processes: temperature gradient (or dry) metamorphism and wet metamorphism.  Temperature gradient metamorphism growth rates are determined using parameters from a look-up table that depends on snow temperature, temperature gradient and (effective) density as described in :cite:`Flanner06`.  Wet metamorphism growth rates depend on the snow liquid fraction, :math:`f_{liq}=m_{liq}/(m_{ice}+m_{liq})`.  The overall magnitude of the wet metamorphism rate is controlled by the namelist parameter, ``snw_growth_wet``. When no liquid is present in snow, :cite:`Brun89` observe a minimum snow grain growth rate, :math:`drsnw_min_o`. In our formulation, the total snow grain growth rate is the sum of the growth rates from dry and wet metamorphism, with the requirement that the dry metamorphism rate be greater than or equal to a minimum growth rate. This minimum rate is adjusted through the namelist parameter ``drsnw_min`` which is a unitless scaling of :math:`drsnw_min_o`.  The maximum snow radius is also a namelist option, ``rsnw_tmax``.
 
 
 

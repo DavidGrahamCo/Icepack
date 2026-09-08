@@ -13,7 +13,7 @@
       use icepack_intfc, only: icepack_query_parameters
       use icepack_intfc, only: icepack_query_tracer_flags
       use icepack_intfc, only: icepack_query_tracer_sizes
-      use icedrv_system, only: icedrv_system_abort
+      use icedrv_system, only: icedrv_system_abort, icedrv_system_flush
 
       implicit none
       private
@@ -32,7 +32,7 @@
       subroutine icedrv_run
 
       use icedrv_calendar, only: istep, istep1, time, dt, stop_now, calendar
-      use icedrv_forcing, only: get_forcing, get_wave_spec
+      use icedrv_forcing, only: get_forcing, get_wave_spec, precalc_forc
       use icedrv_forcing_bgc, only: faero_default, fiso_default, get_forcing_bgc
       use icedrv_flux, only: init_flux_atm_ocn
       use icedrv_history, only: history_format, history_close
@@ -74,7 +74,11 @@
              file=__FILE__,line= __LINE__)
 
          if (tr_fsd .and. wave_spec) call get_wave_spec ! wave spectrum in ice
-         call get_forcing(istep1)  ! get forcing from data arrays
+         if (precalc_forc) then
+            call get_forcing(istep)    ! precalculated arrays are indexed by istep
+         else
+            call get_forcing(istep1)   ! get forcing from data arrays
+         endif
 
          ! biogeochemistry forcing
          if (tr_iso)                 call fiso_default     ! default values
@@ -82,6 +86,8 @@
          if (skl_bgc .or. z_tracers) call get_forcing_bgc  ! biogeochemistry
 
          call init_flux_atm_ocn ! initialize atmosphere, ocean fluxes
+
+         call icedrv_system_flush(nu_diag)
 
       enddo timeLoop
 
