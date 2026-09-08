@@ -743,7 +743,7 @@
          ! Ice advection
          !-----------------------------------------------------------------
             ! Currently we only do ridging for the SHEBA ocean data type (in step_dyn_ridge)
-            if (trim(ocn_data_type) == "SHEBA") then
+            if (trim(ocn_data_type) == "SHEBA" .or. trim(ocn_data_type) == "ISPOL") then
                ! Currently only uniform_ice (and none) advection is implemented
                if (trim(lateral_flux_type) == "uniform_ice") then
 
@@ -860,7 +860,7 @@
       ! Ridging
       !-----------------------------------------------------------------
 
-         if (trim(ocn_data_type) == "SHEBA") then
+         if (trim(ocn_data_type) == "SHEBA" .or. trim(ocn_data_type) == "ISPOL") then
 
          do i = 1, nx
 

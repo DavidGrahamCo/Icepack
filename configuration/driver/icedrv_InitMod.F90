@@ -188,7 +188,7 @@
       use icedrv_init_column, only: init_hbrine, init_bgc
       use icedrv_flux, only: Tf
       use icedrv_restart, only: restartfile
-      use icedrv_restart_shared, only: restart
+      use icedrv_restart_shared, only: restart, runtype_startup
       use icedrv_restart_bgc, only: read_restart_bgc
       use icedrv_state ! almost everything
 
@@ -224,7 +224,11 @@
 
       if (restart) then
          call restartfile (ice_ic)
-         call calendar (time)
+         if (runtype_startup) then
+            print*,'Startup type simulation'
+         else
+            call calendar (time)
+         endif
       endif
 
       if (skl_bgc .or. z_tracers) then

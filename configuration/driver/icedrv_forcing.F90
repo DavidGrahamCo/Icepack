@@ -102,8 +102,8 @@
          precalc_forc              ! whether to precalculate forcing
 
       real (kind=dbl_kind), public :: &
-         trest, &           ! restoring time scale (sec)
-         trestore           ! restoring time scale (days)
+         trest, &                  ! restoring time scale (sec)
+         trestore                  ! restoring time scale (days)
 
       character (len=char_len_long), public :: &
          snw_ssp_table      ! snow table type 'test', 'snicar'
@@ -192,8 +192,10 @@
       if (trim(atm_data_type(1:4)) == 'clim')  call atm_climatological
       if (trim(atm_data_type(1:5)) == 'ISPOL') call atm_ISPOL
       if (trim(atm_data_type(1:4)) == 'NICE')  call atm_NICE
+      if (trim(atm_data_type(1:4)) == 'CAM6')  call atm_CAM6
+      if (trim(atm_data_type(1:5)) == 'JRA55') call atm_JRA55
       if (trim(atm_data_type(1:3)) == 'MDF')   call atm_MDF
-      if (trim(ocn_data_type(1:5)) == 'SHEBA') call ice_open_clos
+      if (trim(ocn_data_type(1:5)) == 'SHEBA' .or. trim(ocn_data_type(1:5)) == 'ISPOL') call ice_open_clos
 
       if (restore_ocn) then
         if (trestore == 0) then
@@ -290,7 +292,7 @@
          qdp     (:) = qdp_data(timestep)
 
       else
-         if (trim(atm_data_type) == 'CFS') then
+         if (trim(atm_data_type) == 'CFS' .or. trim(atm_data_type) == 'CAM6') then
             ! calculate data index corresponding to current timestep
             i = mod(timestep-1,ntime)+1 ! repeat forcing cycle
             mlast = i
@@ -464,7 +466,6 @@
             mnext = month
          endif
          call interp_coeff_monthly(recslot, c1intp, c2intp)
-
          sst_temp(:) = c1intp *  sst_data(mlast) + c2intp *  sst_data(mnext)
          sss     (:) = c1intp *  sss_data(mlast) + c2intp *  sss_data(mnext)
          uocn    (:) = c1intp * uocn_data(mlast) + c2intp * uocn_data(mnext)
@@ -509,7 +510,7 @@
       call finish_ocn_forcing(sst_temp)
 
       ! Lindsay SHEBA open/close dataset is hourly
-      if (trim(ocn_data_type) == 'SHEBA') then
+      if (trim(ocn_data_type) == 'SHEBA' .or. trim(ocn_data_type) == 'ISPOL') then
 
         sec1hr = secday/c24                      ! seconds in 1 hour
         maxrec = ntime
@@ -651,6 +652,104 @@
       close (nu_forcing)
 
       end subroutine atm_CFS
+!=======================================================================
+      subroutine atm_CAM6
+
+      integer (kind=int_kind) :: &
+         nt             ! loop index
+
+      real (kind=dbl_kind) :: &
+         dlwsfc,  &     ! downwelling longwave (W/m2)
+         dswsfc,  &     ! downwelling shortwave (W/m2)
+         windu10, &     ! wind components (m/s)
+         windv10, &     !
+         temp2m,  &     ! 2m air temperature (K)
+         spechum ,&     ! specific humidity (kg/kg)
+         precipr ,&     ! Rain precipitation (kg/m2/s)
+         precips ,&     ! Snow precipitation (kg/m2/s)
+         z              ! Height (m)
+   
+      character (char_len_long) string1
+      character (char_len_long) filename
+      character(len=*), parameter :: subname='(atm_CAM6)'
+   
+!      atm_data_file = 'cfsv2_2015_220_70_01hr.txt'
+      filename = trim(data_dir)//'/CAM6/'//trim(atm_data_file)
+   
+      write (nu_diag,*) 'Reading ',filename
+   
+      open (nu_forcing, file=filename, form='formatted')
+      read (nu_forcing, *) string1 ! headers
+      read (nu_forcing, *) string1 ! units
+   
+      do nt = 1, ntime
+         !write(nu_diag,*) nt
+         read (nu_forcing, '(6(f10.5,1x),3(f10.8,1x))') &
+         z, dswsfc, dlwsfc, windu10, windv10, temp2m, spechum, precipr,precips
+         !print*,nt,z, dswsfc, dlwsfc, windu10, windv10, temp2m, spechum, precipr,precips
+            
+         flw_data(nt)  = dlwsfc
+         fsw_data(nt)  = dswsfc
+         uatm_data(nt) = windu10
+         vatm_data(nt) = windv10
+         Tair_data(nt) = temp2m
+         potT_data(nt) = temp2m
+         Qa_data(nt)   = spechum
+         fsnow_data(nt)= precips
+         frain_data(nt)= precipr
+         zlvl_data(nt) = z
+      enddo
+   
+      close (nu_forcing)
+   
+      end subroutine atm_CAM6
+
+!=======================================================================
+
+      subroutine atm_JRA55
+
+      integer (kind=int_kind) :: &
+         nt             ! loop index
+
+      real (kind=dbl_kind) :: &
+         dlwsfc,  &     ! downwelling longwave (W/m2)
+         dswsfc,  &     ! downwelling shortwave (W/m2)
+         windu10, &     ! wind components (m/s)
+         windv10, &     !
+         temp2m,  &     ! 2m air temperature (K)
+         spechum ,&     ! specific humidity (kg/kg)
+         precip         ! precipitation (kg/m2/s)
+
+      character (char_len_long) string1
+      character (char_len_long) filename
+      character(len=*), parameter :: subname='(atm_JRA55)'
+
+!      atm_data_file = 'cfsv2_2015_220_70_01hr.txt'
+      filename = trim(data_dir)//'/JRA55/'//trim(atm_data_file)
+
+      write (nu_diag,*) 'Reading ',filename
+
+      open (nu_forcing, file=filename, form='formatted')
+      read (nu_forcing, *) string1 ! headers
+      read (nu_forcing, *) string1 ! units
+
+      do nt = 1, ntime
+         read (nu_forcing, '(6(f10.5,1x),2(f10.8,1x))') &
+         dswsfc, dlwsfc, windu10, windv10, temp2m, spechum, precip
+
+           flw_data(nt) = dlwsfc
+           fsw_data(nt) = dswsfc
+          uatm_data(nt) = windu10
+          vatm_data(nt) = windv10
+          Tair_data(nt) = temp2m
+          potT_data(nt) = temp2m
+            Qa_data(nt) = spechum
+         fsnow_data(nt) = precip
+      enddo
+
+      close (nu_forcing)
+
+      end subroutine atm_JRA55
 
 !=======================================================================
 
@@ -738,6 +837,7 @@
          cldf (nt) = max(min(cldf(nt),c1),c0)
          fsw  (nt) = max(fsw(nt),c0)
          fsnow(nt) = max(fsnow(nt),c0)
+         frain(nt) = max(frain(nt),c0)
          rhoa (nt) = max(rhoa(nt),c0)
          Qa   (nt) = max(Qa(nt),c0)
 
@@ -772,8 +872,9 @@
       !-----------------------------------------------------------------
       ! Compute other fields needed by model
       !-----------------------------------------------------------------
-
-         zlvl(nt) = zlvl0
+         if (trim(atm_data_type) /= 'CAM6') then
+            zlvl(nt) = zlvl0
+         endif 
          potT(nt) = Tair(nt)
 
          ! divide shortwave into spectral bands
@@ -784,17 +885,17 @@
 
          ! precipitation
          fsnow(nt) = fsnow(nt) * precip_factor
-
+         frain(nt) = frain(nt) * precip_factor
          ! determine whether precip is rain or snow
          ! HadGEM forcing provides separate snowfall and rainfall rather
          ! than total precipitation
-!         if (trim(atm_data_type) /= 'hadgem') then
+        if (trim(atm_data_type) /= 'CAM6') then
             frain(nt) = c0
             if (Tair(nt) >= Tffresh) then
                 frain(nt) = fsnow(nt)
                 fsnow(nt) = c0
             endif
-!         endif
+        endif
 
          if (calc_strair) then
             wind (nt) = sqrt(uatm(nt)**2 + vatm(nt)**2)
@@ -1528,7 +1629,6 @@
       read(nu_forcing,*) qdp
 
       close(nu_forcing)
-
       do i = 1, 12 ! monthly
          sst_data (i) = t   (i)
          sss_data (i) = s   (i)
@@ -1721,6 +1821,7 @@
       enddo
 
       end subroutine get_wave_spec
+
 
 !=======================================================================
 
