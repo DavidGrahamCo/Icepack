@@ -13,7 +13,7 @@
       use icedrv_restart_shared, only: restart_format
       use icepack_intfc, only: icepack_warnings_flush, icepack_warnings_aborted
       use icepack_intfc, only: icepack_query_tracer_flags, icepack_query_tracer_indices
-      use icepack_intfc, only: icepack_query_parameters
+      use icepack_intfc, only: icepack_query_parameters, icepack_query_tracer_sizes
       use icedrv_system, only: icedrv_system_abort
 #ifdef USE_NETCDF
       use netcdf
@@ -90,7 +90,7 @@
 
       logical (kind=log_kind) :: &
          tr_iage, tr_FY, tr_lvl, tr_iso, tr_aero, tr_brine, &
-         tr_pond_topo, tr_pond_lvl, tr_snow, tr_fsd
+         tr_pond_topo, tr_pond_lvl, tr_pond_sealvl, tr_snow, tr_fsd
 !         skl_bgc, z_tracers
 
       integer (kind=int_kind) :: dims(2)
@@ -118,7 +118,9 @@
           tr_lvl_out=tr_lvl, tr_aero_out=tr_aero, tr_iso_out=tr_iso, &
           tr_brine_out=tr_brine, &
           tr_pond_topo_out=tr_pond_topo, &
-          tr_pond_lvl_out=tr_pond_lvl,tr_snow_out=tr_snow,tr_fsd_out=tr_fsd)
+          tr_pond_lvl_out=tr_pond_lvl, &
+          tr_pond_sealvl_out=tr_pond_sealvl, &
+          tr_snow_out=tr_snow,tr_fsd_out=tr_fsd)
 !      call icepack_query_parameters(skl_bgc_out=skl_bgc, z_tracers_out=z_tracers)
       call icepack_warnings_flush(nu_diag)
       if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
@@ -222,6 +224,7 @@
       if (tr_lvl)       call write_restart_lvl(dims)       ! level ice tracer
       if (tr_pond_lvl)  call write_restart_pond_lvl(dims)  ! level-ice melt ponds
       if (tr_pond_topo) call write_restart_pond_topo(dims) ! topographic melt ponds
+      if (tr_pond_sealvl) call write_restart_pond_sealvl(dims) ! same restart fields as lvl
       if (tr_snow)      call write_restart_snow(dims)      ! snow metamorphosis tracers
       if (tr_iso)       call write_restart_iso(dims)       ! ice isotopes
       if (tr_aero)      call write_restart_aero(dims)      ! ice aerosols
@@ -264,7 +267,6 @@
       use icedrv_restart_shared, only: restart_format, runtype_startup
       use icedrv_arrays_column, only: dhsn, ffracn, hin_max
       use icedrv_arrays_column, only: first_ice, first_ice_real
-      use icepack_tracers, only: ntrcr, nbtrcr
 
       character (*), optional :: ice_ic
 
@@ -275,11 +277,14 @@
       real (kind=dbl_kind) :: &
          hold_time,hold_time_forc
       integer (kind=int_kind) :: &
+         ntrcr
+
+      integer (kind=int_kind) :: &
          nt_Tsfc, nt_sice, nt_qice, nt_qsno
 
       logical (kind=log_kind) :: &
          tr_iage, tr_FY, tr_lvl, tr_iso, tr_aero, tr_brine, &
-         tr_pond_topo, tr_pond_lvl, tr_snow, tr_fsd
+         tr_pond_topo, tr_pond_lvl, tr_pond_sealvl, tr_snow, tr_fsd
 
       character(len=char_len_long) :: filename
       character(len=*), parameter :: subname='(restartfile)'
@@ -291,12 +296,14 @@
       ! Query tracers
       call icepack_query_tracer_indices(nt_Tsfc_out=nt_Tsfc, nt_sice_out=nt_sice, &
           nt_qice_out=nt_qice, nt_qsno_out=nt_qsno)
-
+      call icepack_query_tracer_sizes(ntrcr_out=ntrcr)
       call icepack_query_tracer_flags(tr_iage_out=tr_iage, tr_FY_out=tr_FY, &
            tr_lvl_out=tr_lvl, tr_aero_out=tr_aero, tr_iso_out=tr_iso, &
            tr_brine_out=tr_brine, &
            tr_pond_topo_out=tr_pond_topo, &
-           tr_pond_lvl_out=tr_pond_lvl,tr_snow_out=tr_snow,tr_fsd_out=tr_fsd)
+           tr_pond_lvl_out=tr_pond_lvl, &
+           tr_pond_sealvl_out=tr_pond_sealvl, &
+           tr_snow_out=tr_snow,tr_fsd_out=tr_fsd)
       call icepack_warnings_flush(nu_diag)
       if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
           file=__FILE__,line= __LINE__)
@@ -411,6 +418,7 @@
       if (tr_FY)        call read_restart_FY()        ! first-year area tracer
       if (tr_lvl)       call read_restart_lvl()       ! level ice tracer
       if (tr_pond_lvl)  call read_restart_pond_lvl()  ! level-ice melt ponds
+      if (tr_pond_sealvl) call read_restart_pond_sealvl() ! sealvl ponds same as lvl
       if (tr_pond_topo) call read_restart_pond_topo() ! topographic melt ponds
       if (tr_snow)      call read_restart_snow()      ! snow metamorphosis tracers
       if (tr_iso)       call read_restart_iso()       ! ice isotopes
@@ -433,22 +441,20 @@
 
       do i = 1, nx
          if (tmask(i)) &
-         call icepack_aggregate (ncat=ncat,          &
-                                 aicen=aicen(i,:),   &
-                                 trcrn=trcrn(i,:,:), &
-                                 vicen=vicen(i,:),   &
-                                 vsnon=vsnon(i,:),   &
-                                 aice=aice (i),      &
-                                 trcr=trcr (i,:),    &
-                                 vice=vice (i),      &
-                                 vsno=vsno (i),      &
-                                 aice0=aice0(i),     &
-                                 ntrcr=max_ntrcr,    &
-                                 trcr_depend=trcr_depend, &
-                                 trcr_base=trcr_base,     &
-                                 n_trcr_strata=n_trcr_strata, &
-                                 nt_strata=nt_strata, &
-                                 Tf = Tf(i))
+         call icepack_aggregate(trcrn=trcrn(i,1:ntrcr,:),     &
+                                aicen=aicen(i,:),             &
+                                vicen=vicen(i,:),             &
+                                vsnon=vsnon(i,:),             &
+                                trcr=trcr (i,1:ntrcr),        &
+                                aice=aice (i),                &
+                                vice=vice (i),                &
+                                vsno=vsno (i),                &
+                                aice0=aice0(i),               &
+                                trcr_depend=trcr_depend(1:ntrcr),     &
+                                trcr_base=trcr_base    (1:ntrcr,:),   &
+                                n_trcr_strata=n_trcr_strata(1:ntrcr), &
+                                nt_strata=nt_strata    (1:ntrcr,:), &
+                                Tf = Tf(i))
 
          aice_init(i) = aice(i)
       enddo
@@ -1011,6 +1017,68 @@
       call read_restart_field(nu_restart,ffracn(:,:),ncat,'ffracn')
 
       end subroutine read_restart_pond_lvl
+
+!=======================================================================
+
+! Dumps all values needed for restarting
+!
+      subroutine write_restart_pond_sealvl(dims)
+
+      use icedrv_arrays_column, only: dhsn, ffracn
+      use icedrv_flux, only: fsnow
+      use icedrv_state, only: trcrn
+      use icedrv_domain_size, only: ncat
+
+      integer (kind=int_kind), intent(in), optional :: &
+         dims(:)           ! netcdf dimension IDs
+
+      integer (kind=int_kind) :: nt_apnd, nt_hpnd, nt_ipnd
+      character(len=*), parameter :: subname='(write_restart_pond_sealvl)'
+
+      call icepack_query_tracer_indices(nt_apnd_out=nt_apnd, nt_hpnd_out=nt_hpnd, &
+           nt_ipnd_out=nt_ipnd)
+      call icepack_warnings_flush(nu_diag)
+      if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
+          file=__FILE__,line= __LINE__)
+
+      call write_restart_field(nu_dump,trcrn(:,nt_apnd,:),ncat,'apnd',dims)
+      call write_restart_field(nu_dump,trcrn(:,nt_hpnd,:),ncat,'hpnd',dims)
+      call write_restart_field(nu_dump,trcrn(:,nt_ipnd,:),ncat,'ipnd',dims)
+      call write_restart_field(nu_dump,fsnow(:),1,'fsnow',dims)
+      call write_restart_field(nu_dump,dhsn(:,:),ncat,'dhsn',dims)
+      call write_restart_field(nu_dump,ffracn(:,:),ncat,'ffracn',dims)
+
+      end subroutine write_restart_pond_sealvl
+
+!=======================================================================
+
+! Reads all values needed for a sea level pond restart
+!
+      subroutine read_restart_pond_sealvl()
+
+      use icedrv_arrays_column, only: dhsn, ffracn
+      use icedrv_flux, only: fsnow
+      use icedrv_state, only: trcrn
+      use icedrv_domain_size, only: ncat
+      integer (kind=int_kind) :: nt_apnd, nt_hpnd, nt_ipnd
+      character(len=*), parameter :: subname='(write_restart_pond_sealvl)'
+
+      call icepack_query_tracer_indices(nt_apnd_out=nt_apnd, nt_hpnd_out=nt_hpnd, &
+           nt_ipnd_out=nt_ipnd)
+      call icepack_warnings_flush(nu_diag)
+      if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
+          file=__FILE__,line= __LINE__)
+
+      write(nu_diag,*) 'min/max level-ice ponds'
+
+      call read_restart_field(nu_restart,trcrn(:,nt_apnd,:),ncat,'apnd')
+      call read_restart_field(nu_restart,trcrn(:,nt_hpnd,:),ncat,'hpnd')
+      call read_restart_field(nu_restart,trcrn(:,nt_ipnd,:),ncat,'ipnd')
+      call read_restart_field(nu_restart,fsnow(:),1,'fsnow')
+      call read_restart_field(nu_restart,dhsn(:,:),ncat,'dhsn')
+      call read_restart_field(nu_restart,ffracn(:,:),ncat,'ffracn')
+
+      end subroutine read_restart_pond_sealvl
 
 !=======================================================================
 

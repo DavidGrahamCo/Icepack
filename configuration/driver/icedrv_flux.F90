@@ -129,6 +129,9 @@
          qdp     , & ! deep ocean heat flux (W/m^2), negative upward
          hmix        ! mixed layer depth (m)
 
+      real (kind=dbl_kind), public :: &
+         sst_init    ! initial sea surface temperature (C)
+
       ! water isotopes
       real (kind=dbl_kind), dimension (nx), public :: &
          HDO_ocn    , & ! seawater concentration of HDO (kg/kg)
@@ -183,6 +186,12 @@
          fswthru_vdf , & ! vis dif shortwave penetrating to ocean (W/m^2)
          fswthru_idr , & ! nir dir shortwave penetrating to ocean (W/m^2)
          fswthru_idf     ! nir dif shortwave penetrating to ocean (W/m^2)
+
+      ! fixed ocean mixed layer properties (are overwritten by forcing data)
+      real (kind=dbl_kind), public :: &
+         sss_fixed   , & ! Sea surface salinity (PSU)
+         qdp_fixed   , & ! Deep ocean heat flux (negative upward, W/m^2)
+         hmix_fixed      ! Mixed layer depth (m)
 
        ! internal
 
@@ -248,11 +257,31 @@
 
       real (kind=dbl_kind), &
          dimension (nx,ncat), public :: &
+         rsiden,   & ! fraction of ice that melts laterally
          fsurfn,   & ! category fsurf
          fcondtopn,& ! category fcondtop
          fcondbotn,& ! category fcondbot
          fsensn,   & ! category sensible heat flux
          flatn       ! category latent heat flux
+
+      ! General pond diagnostic variables
+      real (kind=dbl_kind), &
+         dimension (nx,ncat), public :: &
+         ! Like melttn these are defined as volume per unit category area
+         dpnd_flushn,   & ! category pond flushing rate due to ice permeability
+         dpnd_exponn,   & ! category exponential pond drainage rate
+         dpnd_freebdn,  & ! category pond drainage rate due to freeboard constraint
+         dpnd_initialn, & ! category runoff rate due to rfrac (m/step)
+         dpnd_dlidn       ! category pond loss/gain due to ice lid (m/step)
+
+      real (kind=dbl_kind), dimension (nx), public :: &
+         dpnd_flush,    & ! pond flushing rate due to ice permeability (m/step)
+         dpnd_expon,    & ! exponential pond drainage rate (m/step)
+         dpnd_freebd,   & ! pond drainage rate due to freeboard constraint (m/step)
+         dpnd_initial,  & ! runoff rate due to rfrac (m/step)
+         dpnd_dlid,     & ! pond loss/gain (+/-) to ice lid freezing/melting (m/step)
+         dpnd_melt,     & ! pond 'drainage' due to ice melting (m / step)
+         dpnd_ridge       ! pond drainage due to ridging (m / step)
 
       ! As above but these remain grid box mean values i.e. they are not
       ! divided by aice at end of ice_dynamics.
@@ -272,8 +301,6 @@
       !-----------------------------------------------------------------
 
       real (kind=dbl_kind), dimension (nx), public :: &
-         rside   , & ! fraction of ice that melts laterally
-         fside   , & ! lateral heat flux (W/m^2)
          wlat    , & ! lateral melt rate (m/s)
          fsw     , & ! incoming shortwave radiation (W/m^2)
          coszen  , & ! cosine solar zenith angle, < 0 for sun below horizon
@@ -486,8 +513,8 @@
       uocn   (:) = c0              ! surface ocean currents (m/s)
       vocn   (:) = c0
       frzmlt (:) = c0              ! freezing/melting potential (W/m^2)
-      sss    (:) = 34.0_dbl_kind   ! sea surface salinity (ppt)
-      sst    (:) = -1.8_dbl_kind   ! sea surface temperature (C)
+      sss    (:) = sss_fixed       ! sea surface salinity (ppt)
+      sst    (:) = sst_init        ! sea surface temperature (C)
       sstdat (:) = sst(:)          ! sea surface temperature (C)
 
       ! water isotopes from ocean
@@ -502,8 +529,8 @@
       if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
           file=__FILE__,line= __LINE__)
 
-      qdp     (:) = c0             ! deep ocean heat flux (W/m^2)
-      hmix    (:) = c20            ! ocean mixed layer depth
+      qdp     (:) = qdp_fixed      ! deep ocean heat flux (W/m^2)
+      hmix    (:) = hmix_fixed     ! ocean mixed layer depth
 
       !-----------------------------------------------------------------
       ! fluxes sent to atmosphere
@@ -568,6 +595,8 @@
       wind    (:) = sqrt(uatm(:)**2 + vatm(:)**2)  ! wind speed, (m/s)
       Cdn_atm(:) = (vonkar/log(zref/iceruf)) &
                  * (vonkar/log(zref/iceruf)) ! atmo drag for RASM
+      rdg_conv(:) = c0
+      rdg_shear(:) = c0
 
       end subroutine init_coupler_flux
 
@@ -661,6 +690,7 @@
       congel (:) = c0
       frazil (:) = c0
       snoice (:) = c0
+      Tsnice (:) = c0
       dsnow  (:) = c0
       meltt  (:) = c0
       melts  (:) = c0
@@ -689,6 +719,20 @@
       apeff_ai (:) = c0
       snowfrac (:) = c0
       frazil_diag (:) = c0
+      dpnd_flush  (:) = c0
+      dpnd_expon  (:) = c0
+      dpnd_freebd (:) = c0
+      dpnd_initial(:) = c0
+      dpnd_dlid   (:) = c0
+      dpnd_flushn  (:,:) = c0
+      dpnd_exponn  (:,:) = c0
+      dpnd_freebdn (:,:) = c0
+      dpnd_initialn(:,:) = c0
+      dpnd_dlidn   (:,:) = c0
+      dpnd_melt   (:) = c0
+      dpnd_ridge  (:) = c0
+      frz_onset   (:) = c0
+      mlt_onset   (:) = c0
 
       ! drag coefficients are computed prior to the atmo_boundary call,
       ! during the thermodynamics section
@@ -696,24 +740,22 @@
       Cdn_atm(:) = (vonkar/log(zref/iceruf)) &
                  * (vonkar/log(zref/iceruf)) ! atmo drag for RASM
 
-      if (formdrag) then
-        Cdn_atm_rdg (:) = c0
-        Cdn_atm_ratio(:)= c0
-        Cdn_atm_floe(:) = c0
-        Cdn_atm_pond(:) = c0
-        Cdn_atm_skin(:) = c0
-        Cdn_ocn_skin(:) = c0
-        Cdn_ocn_keel(:) = c0
-        Cdn_ocn_floe(:) = c0
-        hfreebd     (:) = c0
-        hdraft      (:) = c0
-        hridge      (:) = c0
-        distrdg     (:) = c0
-        hkeel       (:) = c0
-        dkeel       (:) = c0
-        lfloe       (:) = c0
-        dfloe       (:) = c0
-      endif
+      Cdn_atm_rdg (:) = c0
+      Cdn_atm_ratio(:)= c0
+      Cdn_atm_floe(:) = c0
+      Cdn_atm_pond(:) = c0
+      Cdn_atm_skin(:) = c0
+      Cdn_ocn_skin(:) = c0
+      Cdn_ocn_keel(:) = c0
+      Cdn_ocn_floe(:) = c0
+      hfreebd     (:) = c0
+      hdraft      (:) = c0
+      hridge      (:) = c0
+      distrdg     (:) = c0
+      hkeel       (:) = c0
+      dkeel       (:) = c0
+      lfloe       (:) = c0
+      dfloe       (:) = c0
 
       end subroutine init_history_therm
 

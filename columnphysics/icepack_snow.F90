@@ -12,11 +12,13 @@
       use icepack_parameters, only: rhos, rhow, rhoi, rhofresh, snwgrain
       use icepack_parameters, only: snwlvlfac, Tffresh, cp_ice, Lfresh
       use icepack_parameters, only: snwredist, rsnw_fall, rsnw_tmax, rhosnew
+      use icepack_parameters, only: snw_growth_wet, drsnw_min, snwliq_max
       use icepack_parameters, only: rhosmin, rhosmax, windmin, drhosdwind
       use icepack_parameters, only: isnw_T, isnw_Tgrd, isnw_rhos
       use icepack_parameters, only: snowage_rhos, snowage_Tgrd, snowage_T
       use icepack_parameters, only: snowage_tau, snowage_kappa, snowage_drdt0
       use icepack_parameters, only: snw_aging_table, use_smliq_pnd
+      use icepack_tracers, only: ncat, nilyr, nslyr
 
       use icepack_therm_shared, only: icepack_ice_temperature
       use icepack_therm_shared, only: adjust_enthalpy
@@ -30,9 +32,8 @@
       public :: icepack_step_snow, drain_snow, icepack_init_snow
 
       real (kind=dbl_kind), parameter, public :: &
-         S_r  = 0.033_dbl_kind, & ! irreducible saturation (Anderson 1976)
-         S_wet= 4.22e5_dbl_kind  ! wet metamorphism parameter (um^3/s)
-                                  ! = 1.e18 * 4.22e-13 (Oleson 2010)
+         drsnw_min_o = 1.0186_dbl_kind    ! Bun 1989  (um^3/s)
+                                          ! minimum volume growth rate 1.28x10^-8 mm^3/s/4/pi
 
       real (kind=dbl_kind) :: &
          min_rhos, &   ! snowtable axis data, assumes linear data
@@ -67,6 +68,26 @@
       integer (kind=int_kind) :: n
 
       character (len=*),parameter :: subname='(icepack_init_snow)'
+
+      !-----------------------------------------------------------------
+      ! Check for valid values
+      !-----------------------------------------------------------------
+
+      if (snwredist /= 'none' .and. snwredist /= 'bulk' .and. &
+          snwredist /= 'ITDrdg') then
+         call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+         call icepack_warnings_add(subname//'ERROR: snwredist value invalid = '//trim(snwredist))
+         return
+      endif
+
+      if (snwgrain) then
+         if (snw_aging_table /= 'file' .and. snw_aging_table /= 'test' .and. &
+             snw_aging_table /= 'snicar') then
+            call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
+            call icepack_warnings_add(subname//'ERROR: snw_aging_table value invalid = '//trim(snw_aging_table))
+            return
+         endif
+      endif
 
       !-----------------------------------------------------------------
       ! Snow metamorphism lookup table
@@ -229,7 +250,7 @@
             call icepack_warnings_add(subname//'ERROR: snw_aging_table value')
             return
          endif
-      endif
+      endif   ! snwgrain
 
       end subroutine icepack_init_snow
 
@@ -240,8 +261,7 @@
 ! authors: Elizabeth C. Hunke, LANL
 !          Nicole Jeffery, LANL
 
-      subroutine icepack_step_snow(dt,        nilyr,     &
-                                   nslyr,     ncat,      &
+      subroutine icepack_step_snow(dt,                   &
                                    wind,      aice,      &
                                    aicen,     vicen,     &
                                    vsnon,     Tsfc,      &
@@ -252,11 +272,6 @@
                                    rsnw,      rhos_cmpn, &
                                    fresh,     fhocn,     &
                                    fsloss,    fsnow)
-
-      integer (kind=int_kind), intent(in) :: &
-         nslyr, & ! number of snow layers
-         nilyr, & ! number of ice  layers
-         ncat     ! number of thickness categories
 
       real (kind=dbl_kind), intent(in) :: &
          dt     , & ! time step
@@ -329,7 +344,6 @@
 
       if (snwredist(1:3) == 'ITD' .and. aice > puny) then
          call snow_redist(dt,                  &
-                          nslyr,    ncat,      &
                           wind,     aicen(:),  &
                           vicen(:), vsnon(:),  &
                           zqsn(:,:),           &
@@ -366,10 +380,12 @@
                hsn(n)   = vsnon(n)/aicen(n)
                hin(n)   = vicen(n)/aicen(n)
             endif
+            do k = 1, nslyr
+               rsnw (k,n) = max(rsnw_fall, rsnw(k,n))
+            enddo
          enddo
 
-         call update_snow_radius (dt,         ncat,  &
-                                  nslyr,      nilyr, &
+         call update_snow_radius (dt,                &
                                   rsnw,       hin,   &
                                   Tsfc,       zTin1, &
                                   hsn,        zqsn,  &
@@ -397,12 +413,8 @@
 ! volume, mass and energy include factor of ain
 ! thickness does not
 
-      subroutine snow_redist(dt, nslyr, ncat, wind, ain, vin, vsn, zqsn, &
+      subroutine snow_redist(dt, wind, ain, vin, vsn, zqsn, &
          alvl, vlvl, fresh, fhocn, fsloss, rhos_cmpn, fsnow)
-
-      integer (kind=int_kind), intent(in) :: &
-         nslyr     , & ! number of snow layers
-         ncat          ! number of thickness categories
 
       real (kind=dbl_kind), intent(in) :: &
          dt        , & ! time step (s)
@@ -682,13 +694,13 @@
                      zs2(k+1) = zs2(k) + hslyr  ! new layer depths (equal thickness)
                   enddo
 
-                  call adjust_enthalpy (nslyr,                &
-                                        zs1(:),   zs2(:),     &
-                                        hslyr,    hsn_new(n), &
+                  call adjust_enthalpy (nslyr,              &
+                                        zs1(:), zs2(:),     &
+                                        hslyr , hsn_new(n), &
                                         zqsn(:,n))
                   if (icepack_warnings_aborted(subname)) return
                else
-                  hsn_new(1) = hsn_new(1) + dhsn
+                  hsn_new(n) = hsn_new(n) + dhsn
                endif   ! nslyr > 1
             endif      ! |dhsn| > puny
          endif         ! ain > puny
@@ -824,13 +836,8 @@
 
 !  Snow grain metamorphism
 
-      subroutine update_snow_radius (dt, ncat, nslyr, nilyr, rsnw, hin, &
+      subroutine update_snow_radius (dt, rsnw, hin, &
                                      Tsfc, zTin, hsn, zqsn, smice, smliq)
-
-      integer (kind=int_kind), intent(in) :: &
-         ncat     , & ! number of categories
-         nslyr    , & ! number of snow layers
-         nilyr        ! number of ice layers
 
       real (kind=dbl_kind), intent(in) :: &
          dt           ! time step
@@ -859,6 +866,9 @@
          drsnw_wet, & ! wet metamorphism (10^-6 m)
          drsnw_dry    ! dry (temperature gradient) metamorphism (10^-6 m)
 
+      real (kind=dbl_kind) :: &
+         drsnw_dry_tmp ! snow grain radius growth  (10^-6 m)
+
       character (len=*),parameter :: subname='(update_snow_radius)'
 
       do n = 1, ncat
@@ -871,7 +881,7 @@
       !-----------------------------------------------------------------
       ! dry metamorphism
       !-----------------------------------------------------------------
-            call snow_dry_metamorph (nslyr, nilyr, dt, rsnw(:,n), &
+            call snow_dry_metamorph (dt, rsnw(:,n), &
                                      drsnw_dry, zqsn(:,n), Tsfc(n), &
                                      zTin(n), hsn(n), hin(n))
             if (icepack_warnings_aborted(subname)) return
@@ -883,7 +893,8 @@
                call snow_wet_metamorph (dt, drsnw_wet(k), rsnw(k,n), &
                                         smice(k,n), smliq(k,n))
                if (icepack_warnings_aborted(subname)) return
-               rsnw(k,n) = min(rsnw_tmax, rsnw(k,n) + drsnw_dry(k) + drsnw_wet(k))
+               drsnw_dry_tmp = max(drsnw_dry(k), drsnw_min*drsnw_min_o/rsnw(k,n)**2*dt)
+               rsnw(k,n) = min(rsnw_tmax, rsnw(k,n) + drsnw_dry_tmp + drsnw_wet(k))
             enddo
 
          else ! hsn or hin < puny
@@ -902,7 +913,7 @@
 
 !  Snow grain metamorphism
 
-      subroutine snow_dry_metamorph (nslyr,nilyr, dt, rsnw, drsnw_dry, zqsn, &
+      subroutine snow_dry_metamorph (dt, rsnw, drsnw_dry, zqsn, &
                                      Tsfc, zTin1, hsn, hin)
 
       ! Vapor redistribution: Method is to retrieve 3 best-fit parameters that
@@ -917,10 +928,6 @@
       !   drdt_0 is the initial rate of change of effective radius, and
       !   dr_fresh is the difference between the current and fresh snow states
       !   (r_current - r_fresh).
-
-      integer (kind=int_kind), intent(in) :: &
-         nslyr,  & ! number of snow layers
-         nilyr     ! number of ice layers
 
       real (kind=dbl_kind), intent(in) :: &
          dt                    ! time step (s)
@@ -1122,7 +1129,7 @@
       fliq = c1
       if (smice + smliq > c0 .and. rsnw > c0) then
          fliq = min(smliq/(smice + smliq),p1)
-         dr_wet = S_wet * fliq**3*dt/(c4*pi*rsnw**2)
+         dr_wet = snw_growth_wet * fliq**3*dt/(c4*pi*rsnw**2)
       endif
 
       end subroutine snow_wet_metamorph
@@ -1175,11 +1182,8 @@
 
 !  Conversions between ice mass, liquid water mass in snow
 
-      subroutine drain_snow (nslyr, vsnon, aicen, &
+      subroutine drain_snow (vsnon, aicen, &
                              massice, massliq, meltsliq)
-
-      integer (kind=int_kind), intent(in) :: &
-         nslyr     ! number of snow layers
 
       real (kind=dbl_kind), intent(in) :: &
          vsnon,  & ! snow volume (m)
@@ -1222,7 +1226,7 @@
             massliq(k) = massliq(k) + dlin(k)   ! add liquid in from layer above
             phi_ice(k) = min(c1, massice(k) / (rhoi    *hslyr))
             phi_liq(k) =         massliq(k) / (rhofresh*hslyr)
-            dlout(k)   = max(c0, (phi_liq(k) - S_r*(c1-phi_ice(k))) * rhofresh * hslyr)
+            dlout(k)   = max(c0, (phi_liq(k) - snwliq_max * (c1-phi_ice(k))) * rhofresh * hslyr)
             massliq(k) = massliq(k) - dlout(k)
             if (k < nslyr) then
                dlin(k+1) = dlout(k)
