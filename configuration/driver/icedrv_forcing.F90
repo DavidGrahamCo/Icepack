@@ -27,7 +27,7 @@
                 interp_coeff_monthly, get_wave_spec
 
       integer (kind=int_kind), parameter :: &
-         ntime = 8760        ! number of data points in time
+         ntime = 8760*5       ! number of data points in time
 
       integer (kind=int_kind), public :: &
          ycycle          , & ! number of years in forcing cycle
@@ -125,6 +125,7 @@
 
       write (nu_diag,*) ' Initial forcing data year = ',fyear_init
       write (nu_diag,*) ' Final   forcing data year = ',fyear_final
+      write (nu_diag,*) ' Number of ntime steps = ', ntime
 
      !-------------------------------------------------------------------
      ! Initialize forcing data to default values
@@ -231,7 +232,7 @@
 
       character(len=*), parameter :: subname='(get_forcing)'
 
-      if (trim(atm_data_type) == 'CFS' .or. trim(atm_data_type) == 'CAM6') then
+      if (trim(atm_data_type) == 'CFS' .or. trim(atm_data_type) == 'CAM6' .or. trim(atm_data_type) == 'JRA55') then
          ! calculate data index corresponding to current timestep
          
          i = mod(timestep-1,ntime)+1 ! repeat forcing cycle
@@ -669,7 +670,7 @@
       read (nu_forcing, *) string1 ! units
 
       do nt = 1, ntime
-         read (nu_forcing, '(6(f10.5,1x),2(f10.8,1x))') &
+         read (nu_forcing, '(6(f10.5,1x),1(f10.8,1x))') &
          dswsfc, dlwsfc, windu10, windv10, temp2m, spechum, precip
 
            flw_data(nt) = dlwsfc
