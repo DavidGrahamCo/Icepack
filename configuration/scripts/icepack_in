@@ -15,6 +15,9 @@
     restart        = .false.
     restart_dir    = './restart/'
     restart_format = 'bin'
+    runtype_startup = .true.
+    input_lat = 1.53589
+    input_lon = 0
     dumpfreq       = 'y'
     dump_last      = .false.
     diagfreq       = 24
