@@ -215,49 +215,48 @@
       ! Compute volume and energy sums that linear remapping should
       !  conserve.
       !-----------------------------------------------------------------
-
       if (conserv_check) then
+         
+         do n = 1, ncat
+            eicen(n) = c0
+            esnon(n) = c0
+            vbrin(n) = c0
+            sicen(n) = c0
+            ! ice layers
+            do k = 1, nilyr
+               eicen(n) = eicen(n) + trcrn(nt_qice+k-1,n) &
+                        * vicen(n)/real(nilyr,kind=dbl_kind)
+            enddo
+            ! snow layers
+            do k = 1, nslyr
+               esnon(n) = esnon(n) + trcrn(nt_qsno+k-1,n) &
+                        * vsnon(n)/real(nslyr,kind=dbl_kind)
+            enddo
+            ! brine tracer
+            if (tr_brine) then
+               vbrin(n) = vbrin(n) + trcrn(nt_fbri,n) &
+                        * vicen(n)
+            endif
 
-      do n = 1, ncat
+            do k = 1, nilyr
+               sicen(n) = sicen(n) + trcrn(nt_sice+k-1,n) &
+                        * vicen(n)/real(nilyr,kind=dbl_kind)
+            enddo
 
-         eicen(n) = c0
-         esnon(n) = c0
-         vbrin(n) = c0
-         sicen(n) = c0
+         enddo ! n
 
-         do k = 1, nilyr
-            eicen(n) = eicen(n) + trcrn(nt_qice+k-1,n) &
-                     * vicen(n)/real(nilyr,kind=dbl_kind)
-         enddo
-         do k = 1, nslyr
-            esnon(n) = esnon(n) + trcrn(nt_qsno+k-1,n) &
-                     * vsnon(n)/real(nslyr,kind=dbl_kind)
-         enddo
-
-         if (tr_brine) then
-            vbrin(n) = vbrin(n) + trcrn(nt_fbri,n) &
-                     * vicen(n)
-         endif
-
-         do k = 1, nilyr
-            sicen(n) = sicen(n) + trcrn(nt_sice+k-1,n) &
-                     * vicen(n)/real(nilyr,kind=dbl_kind)
-         enddo
-
-      enddo ! n
-
-      call column_sum (ncat, vicen, vice_init)
-      if (icepack_warnings_aborted(subname)) return
-      call column_sum (ncat, vsnon, vsno_init)
-      if (icepack_warnings_aborted(subname)) return
-      call column_sum (ncat, eicen, eice_init)
-      if (icepack_warnings_aborted(subname)) return
-      call column_sum (ncat, esnon, esno_init)
-      if (icepack_warnings_aborted(subname)) return
-      call column_sum (ncat, sicen, sice_init)
-      if (icepack_warnings_aborted(subname)) return
-      call column_sum (ncat, vbrin, vbri_init)
-      if (icepack_warnings_aborted(subname)) return
+         call column_sum (ncat, vicen, vice_init)
+         if (icepack_warnings_aborted(subname)) return
+         call column_sum (ncat, vsnon, vsno_init)
+         if (icepack_warnings_aborted(subname)) return
+         call column_sum (ncat, eicen, eice_init)
+         if (icepack_warnings_aborted(subname)) return
+         call column_sum (ncat, esnon, esno_init)
+         if (icepack_warnings_aborted(subname)) return
+         call column_sum (ncat, sicen, sice_init)
+         if (icepack_warnings_aborted(subname)) return
+         call column_sum (ncat, vbrin, vbri_init)
+         if (icepack_warnings_aborted(subname)) return
 
       endif ! conserv_check
 
@@ -309,17 +308,17 @@
             if ((hicen_init(n+1) - hicen_init(n))>0) then
 
               ! interpolate between adjacent category growth rates
-              slope = (dhicen(n+1) - dhicen(n)) / &
-                 (hicen_init(n+1) - hicen_init(n))
-              hbnew(n) = hin_max(n) + dhicen(n) &
-                      + slope * (hin_max(n) - hicen_init(n))
+               slope = (dhicen(n+1) - dhicen(n)) / &
+                  (hicen_init(n+1) - hicen_init(n))
+               hbnew(n) = hin_max(n) + dhicen(n) &
+                        + slope * (hin_max(n) - hicen_init(n))
 
             else
-
-              write(warnstr,*) subname, &
-                 'ITD Thermodynamics: hicen_init(n+1) <= hicen_init(n)'
-              call icepack_warnings_setabort(.true.,__FILE__,__LINE__)
-              call icepack_warnings_add(warnstr)
+               write(*,*) 'hicen_init(n+1) <= hicen_init(n)' 
+               write(warnstr,*) subname, &
+                  'ITD Thermodynamics: hicen_init(n+1) <= hicen_init(n)'
+               call icepack_warnings_setabort(.false.)
+               call icepack_warnings_add(warnstr)
 
             endif
 
@@ -444,9 +443,9 @@
             if (dh0 < c0) then   ! remove area from category 1
                dh0 = min(-dh0,hin_max(1))   ! dh0 --> |dh0|
 
-      !-----------------------------------------------------------------
-      ! Integrate g(1) from 0 to dh0 to estimate area melted
-      !-----------------------------------------------------------------
+            !-----------------------------------------------------------------
+            ! Integrate g(1) from 0 to dh0 to estimate area melted
+            !-----------------------------------------------------------------
 
                ! right integration limit (left limit = 0)
                etamax = min(dh0,hR(1)) - hL(1)
@@ -496,9 +495,9 @@
                           hL   (n),   hR   (n))
             if (icepack_warnings_aborted(subname)) return
 
-      !-----------------------------------------------------------------
-      ! Compute area and volume to be shifted across each boundary.
-      !-----------------------------------------------------------------
+         !-----------------------------------------------------------------
+         ! Compute area and volume to be shifted across each boundary.
+         !-----------------------------------------------------------------
 
             donor(n) = 0
             daice(n) = c0

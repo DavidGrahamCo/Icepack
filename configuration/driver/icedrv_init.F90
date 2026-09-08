@@ -141,7 +141,7 @@
                                  nt_aero, nt_fsd, nt_isosno, nt_isoice
 
       real (kind=real_kind) :: rplvl, rptopo, rpsealvl
-      real (kind=dbl_kind) :: Cf, puny
+      real (kind=dbl_kind) :: Cf, puny, pi
 
       character(len=*), parameter :: subname='(input_data)'
 
@@ -276,6 +276,7 @@
       if (icepack_warnings_aborted()) call icedrv_system_abort(string=subname, &
           file=__FILE__, line=__LINE__)
 
+      call icepack_query_parameters(pi_out=pi,puny_out=puny)
       !-----------------------------------------------------------------
       ! default values
       !-----------------------------------------------------------------
@@ -729,8 +730,8 @@
          write(nu_diag,1010) ' restart                   = ', restart
          write(nu_diag,1010) ' runtype_startup           = ', runtype_startup
          write(nu_diag,1030) ' restart_dir               = ', trim(restart_dir)
-         write(nu_diag,1020) ' input_lat                 = ', input_lat
-         write(nu_diag,1020) ' input_lon                 = ', input_lon
+         write(nu_diag,1005) ' input_lat                 = ', input_lat
+         write(nu_diag,1005) ' input_lon                 = ', input_lon
          write(nu_diag,1030) ' restart_file              = ', trim(restart_file)
          write(nu_diag,1030) ' restart_format            = ', trim(restart_format)
          write(nu_diag,1030) ' history_format            = ', trim(history_format)
