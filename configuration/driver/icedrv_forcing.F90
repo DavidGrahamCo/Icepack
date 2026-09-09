@@ -31,7 +31,7 @@
       public :: init_forcing, get_forcing, interp_coeff, &
                 interp_coeff_monthly, get_wave_spec
 
-      integer (kind=int_kind), parameter :: &
+      integer (kind=int_kind) :: &
          ntime = 8760*5       ! number of data points in time
 
       integer (kind=int_kind), public :: &
