@@ -2,7 +2,7 @@
 #source /home/dj_gr/miniconda3/etc/profile.d/conda.sh
 module load anaconda
 conda activate icepack
-DATA_DIR="$(cd ../input/Icepack_data/forcing/barents_combined && pwd)"
+DATA_DIR="$(cd ../input/forcing/barents_combined && pwd)"
 cd configuration/scripts/options
 #Run everything from Icepack root
 
