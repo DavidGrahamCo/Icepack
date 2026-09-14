@@ -8,16 +8,12 @@ cd configuration/scripts/options
 
 for i in $(seq 1 5); do
   n=$(printf '%04d' "$i")
-  cat > set_nml.forcing${n} <<EOF
+  cat > set_nml.barentsforcing${n} <<EOF
 input_lat       = 1.309
 input_lon       = 0.698132
-atm_data_type   = 'JRA55'
-ocn_data_type   = 'ISPOL'
 data_dir = '${DATA_DIR}'
 atm_data_file   = 'ATM_FORCING_${n}.txt'
 ocn_data_file   = 'OCN_FORCING_${n}.txt'
-ice_ic          = 'none'
-npt             = 105120
 EOF
 done
 
@@ -25,7 +21,7 @@ cd ../../..
 rm -rf curc_icepack_test*
 for i in $(seq 1 5); do
   n=$(printf '%04d' "$i")
-  ./icepack.setup --case curc_icepack_test${n} --mach conda --env linux -s restcdf,histcdf,ionetcdf,forcing${n}
+  ./icepack.setup --case curc_icepack_test${n} --mach conda --env linux -s restcdf,histcdf,ionetcdf,barentsforcing${n}
   cd curc_icepack_test${n}
   ./icepack.build
   ./icepack.submit
