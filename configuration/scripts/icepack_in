@@ -4,7 +4,7 @@
     year_init      = 2015
     istep0         = 0
     dt             = 3600.0
-    npt            = 8760
+    npt             = 105120
     ndtd           = 1
     ice_ic         = 'default'
     hi_init_slab   = 2.0

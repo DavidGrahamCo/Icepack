@@ -11,14 +11,13 @@ for i in $(seq 1 5); do
   (
     cd curc_icepack_test${n}
 
-    cat > namelist.mods <<EOF
+    cat > namelist.changes <<EOF
 data_dir        = '${DATA_DIR}'
 atm_data_file   = 'ATM_FORCING_${n}.txt'
 ocn_data_file   = 'OCN_FORCING_${n}.txt'
-npt             = 105120
 EOF
 
-    ./casescripts/parse_namelist.sh icepack_in namelist.mods
+    ./casescripts/parse_namelist.sh icepack_in namelist.changes
     ./icepack.submit
   )
 done
