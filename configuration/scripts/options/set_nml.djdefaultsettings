@@ -1,0 +1,6 @@
+history_format = 'nc'
+restart_format = 'nc'
+ice_ic          = 'none'
+npt             = 105120
+atm_data_type   = 'JRA55'
+ocn_data_type   = 'ISPOL'
