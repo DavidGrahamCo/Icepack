@@ -61,8 +61,8 @@ cd configuration/scripts/options
 for i in $(seq 1 30); do
   n=$(printf '%04d' "$i")
   cat > set_nml.centralarcticforcing${n} <<EOF
-input_lat       = 1.309
-input_lon       = 0.698132
+input_lat       = 1.53589
+input_lon       = 0
 data_dir = '${CENTRALARCTIC_DATA_DIR}'
 atm_data_file   = 'ATM_FORCING_${n}.txt'
 ocn_data_file   = 'OCN_FORCING_${n}.txt'
