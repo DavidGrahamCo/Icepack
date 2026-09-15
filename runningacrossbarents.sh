@@ -3,27 +3,22 @@
 #module load anaconda
 #conda activate icepack
 DATA_DIR="$(cd ../input/forcing/barents_combined && pwd)"
-cd configuration/scripts/options
-#Run everything from Icepack root
 
+
+#This requires the case directory to exist already
 for i in $(seq 1 5); do
   n=$(printf '%04d' "$i")
-  cat > set_nml.barentsforcing${n} <<EOF
-input_lat       = 1.309
-input_lon       = 0.698132
-data_dir = '${DATA_DIR}'
+  (
+    cd curc_icepack_test${n}
+
+    cat > namelist.mods <<EOF
+data_dir        = '${DATA_DIR}'
 atm_data_file   = 'ATM_FORCING_${n}.txt'
 ocn_data_file   = 'OCN_FORCING_${n}.txt'
+npt             = 105120
 EOF
-done
 
-cd ../../..
-rm -rf curc_icepack_test*
-for i in $(seq 1 5); do
-  n=$(printf '%04d' "$i")
-  ./icepack.setup --case curc_icepack_test${n} --mach conda --env linux -s restcdf,histcdf,ionetcdf,barentsforcing${n}
-  cd curc_icepack_test${n}
-  ./icepack.build
-  ./icepack.submit
-  cd ..
+    ./casescripts/parse_namelist.sh icepack_in namelist.mods
+    ./icepack.submit
+  )
 done
