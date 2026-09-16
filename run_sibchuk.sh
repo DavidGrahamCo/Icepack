@@ -13,6 +13,7 @@ for i in $(seq 1 30); do
 
     cat > namelist.changes <<EOF
     ksno              = 0.3d0
+    npt               = 192720
 EOF
 
     ./casescripts/parse_namelist.sh icepack_in namelist.changes
