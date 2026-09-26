@@ -31,8 +31,8 @@
       public :: init_forcing, get_forcing, interp_coeff, &
                 interp_coeff_monthly, get_wave_spec
 
-      integer (kind=int_kind) :: &
-         ntime = 8760*5       ! number of data points in time
+      integer (kind=int_kind):: &
+         ntime        ! number of data points in time
 
       integer (kind=int_kind), public :: &
          ycycle          , & ! number of years in forcing cycle
@@ -196,7 +196,8 @@
       if (trim(atm_data_type(1:4)) == 'CAM6')  call atm_CAM6
       if (trim(atm_data_type(1:5)) == 'JRA55') call atm_JRA55
       if (trim(atm_data_type(1:3)) == 'MDF')   call atm_MDF
-      if (trim(ocn_data_type(1:5)) == 'SHEBA' .or. trim(ocn_data_type(1:5)) == 'ISPOL') call ice_open_clos
+      if (trim(ocn_data_type(1:5)) == 'SHEBA')  call ice_open_clos
+      !if (trim(ocn_data_type(1:5)) == 'SHEBA' .or. trim(ocn_data_type(1:5)) == 'ISPOL') call ice_open_clos
 
       if (restore_ocn) then
         if (trestore == 0) then
@@ -511,7 +512,8 @@
       call finish_ocn_forcing(sst_temp)
 
       ! Lindsay SHEBA open/close dataset is hourly
-      if (trim(ocn_data_type) == 'SHEBA' .or. trim(ocn_data_type) == 'ISPOL') then
+      !if (trim(ocn_data_type) == 'SHEBA' .or. trim(ocn_data_type) == 'ISPOL') then
+      if (trim(ocn_data_type) == 'SHEBA') then
 
         sec1hr = secday/c24                      ! seconds in 1 hour
         maxrec = ntime

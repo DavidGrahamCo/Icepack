@@ -5,17 +5,16 @@ which conda
 
 #This requires the case directories to exist already, use setupensemble.sh
 
-#Change the parameters in here (eventually build out file to automatically create and apply namelist.changes)
-for i in $(seq 1 30); do
+
+MODS="${1:?usage: $0 <mods-file>}"
+MODS=$(readlink -f "$MODS")
+
+
+for i in $(seq 1 2); do
   n=$(printf '%04d' "$i")
   (
     cd centralarctic_forced_${n} || exit 1
 
-    cat > namelist.changes <<EOF
-    ksno              = 0.3d0
-EOF
-
-    ./casescripts/parse_namelist.sh icepack_in namelist.changes
-    ./icepack.submit
-  )
+    ./casescripts/parse_namelist.sh icepack_in "$MODS"
+    ./icepack.submit  )
 done

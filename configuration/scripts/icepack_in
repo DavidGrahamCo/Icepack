@@ -1,7 +1,7 @@
 &setup_nml
     days_per_year  = 365
     use_leap_years = .false.
-    year_init      = 2015
+    year_init      = 2000
     istep0         = 0
     dt             = 3600.0
     npt             = 105120
@@ -145,7 +145,7 @@
     default_season  = 'spring'
     bgc_data_type   = 'default'
     atm_data_type   = 'JRA55'
-    ocn_data_type   = 'ISPOL'
+    ocn_data_type   = 'default'
     lateral_flux_type   = 'uniform_ice'
     fyear_init      = 2015
     ycycle          = 1
