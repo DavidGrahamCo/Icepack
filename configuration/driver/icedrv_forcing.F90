@@ -137,7 +137,7 @@
             ' default ocean', file=__FILE__,line=__LINE__)
          ntime = npt
       else
-         ntime = 8760
+         ntime = 8760 * ycycle
       endif
       allocate(fsw_data(ntime), cldf_data(ntime), fsnow_data(ntime), &
                Tair_data(ntime), uatm_data(ntime), vatm_data(ntime), &
