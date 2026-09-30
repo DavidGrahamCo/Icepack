@@ -1,11 +1,13 @@
 history_format = 'nc'
 restart_format = 'nc'
 ice_ic          = 'none'
-npt             = 105120
+npt             = 26280
 atm_data_type   = 'JRA55'
 ocn_data_type   = 'default'
 ice_data_file   = 'unknown_ice_data_file'
-ycycle          = 11
+ycycle          = 3
 fyear_init      = 2000
 year_init      = 2000
 default_season  = 'winter'
+qdp_fixed = -10
+sss_fixed = 34
