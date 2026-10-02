@@ -1,0 +1,8 @@
+input_lat       = 1.53589
+input_lon       = 0
+data_dir = '/projects/dagr5998/icepack-dirs/input/forcing/centralarctic_MDF'
+atm_data_file   = 'ATM_MDF_CentralArctic_1975-2023.nc'
+ocn_data_file   = 'OCN_MDF_CentralArctic_1975-2023.nc'
+sst_init = -1.8
+year_init = 1975
+fyear_init = 1975
