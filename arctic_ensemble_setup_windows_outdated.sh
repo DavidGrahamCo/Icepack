@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CENTRALARCTIC_DATA_DIR="$(cd ../input/forcing/centralarctic_combined && pwd)" || { echo "no central arctic data"; exit 1; }
+CENTRALARCTIC_DATA_DIR="$(cd ../input/forcing/centralarctic_MDF && pwd)" || { echo "no central arctic data"; exit 1; }
 
 MEMBERS=5
 YEARS=$(seq 2000 2013)
@@ -35,3 +35,4 @@ for i in $(seq 1 $MEMBERS); do
 done
 
 echo "Done with setup"
+
