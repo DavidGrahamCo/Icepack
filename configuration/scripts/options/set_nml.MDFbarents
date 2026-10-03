@@ -1,0 +1,5 @@
+input_lat       = 1.309
+input_lon       = 0.698132
+data_dir = '/projects/dagr5998/icepack-dirs/input/forcing/barents_MDF'
+atm_data_file   = 'ATM_MDF_Barents_1975-2023.nc'
+ocn_data_file   = 'OCN_MDF_Barents_1975-2023.nc'

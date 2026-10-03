@@ -1,0 +1,5 @@
+input_lat       = 1.41372
+input_lon       = 6.24828
+data_dir = '/projects/dagr5998/icepack-dirs/input/forcing/coastalcanada_MDF'
+atm_data_file   = 'ATM_MDF_CoastalCanada_1975-2023.nc'
+ocn_data_file   = 'OCN_MDF_CoastalCanada_1975-2023.nc'

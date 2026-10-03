@@ -1,1 +1,2 @@
 setenv NICECAT    5           # number of ice thickness categories
+setenv ICE_IOTYPE  netcdf
