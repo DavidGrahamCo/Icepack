@@ -1746,7 +1746,9 @@
          call load_var_MDF("mlotst", hmix_data, ncid, model_time)
          call load_var_MDF("hfsot", qdp_data, ncid, model_time)
          call load_var_MDF("tos", sst_data, ncid, model_time)
-
+         call load_var_MDF("uorel", uocn_data, ncid, model_time)
+         call load_var_MDF("vorel", vocn_data, ncid, model_time)
+         
 #else
          call icedrv_system_abort(string=subname//&
          ' ERROR: ocn_data_format = "nc" requires USE_NETCDF', &
