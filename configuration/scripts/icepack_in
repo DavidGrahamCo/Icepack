@@ -1,10 +1,10 @@
 &setup_nml
     days_per_year  = 365
     use_leap_years = .false.
-    year_init      = 2000
+    year_init      = 2015
     istep0         = 0
     dt             = 3600.0
-    npt             = 105120
+    npt             = 8760
     ndtd           = 1
     ice_ic         = 'default'
     hi_init_slab   = 2.0
@@ -144,8 +144,8 @@
     precip_units    = 'mks'
     default_season  = 'spring'
     bgc_data_type   = 'default'
-    atm_data_type   = 'JRA55'
-    ocn_data_type   = 'default'
+    atm_data_type   = 'clim'
+    ocn_data_type   = 'SHEBA'
     lateral_flux_type   = 'uniform_ice'
     fyear_init      = 2015
     ycycle          = 1
